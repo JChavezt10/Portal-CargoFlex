@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} — Cargoflex{% endblock %}
+
+{% block content %}
+<section class="module-page wide">
+
+    <div class="module-header">
+        <h2>📱 Procesador de Archivos de Recepción (SGA & WMS)</h2>
+        <p>
+            Sube el <b>Packing List</b> (obligatorio) y opcionalmente el
+            <b>Maestro de Códigos</b> y el <b>Reporte de Stock</b>.
+        </p>
+        <a href="/" class="btn-back">← Volver al inicio</a>
+    </div>
+
+    {# ==================== INSTRUCCIONES ==================== #}
+    <details class="info-box">
+        <summary>📖 Instrucciones de uso (clic para expandir)</summary>
+        <div class="info-content">
+
+            <div class="alert alert-error">
+                📌 <b>NOTA IMPORTANTE:</b> El archivo <b>Packing List</b> debe tener
+                las columnas en este orden estricto (sin importar los nombres):
+                <br><br>
+                <b>| N° Importación | Código | Color | Descripción | Cantidad |</b>
+            </div>
+
+            <h4>📋 Reglas según archivos subidos:</h4>
+
+            <div class="info-columns">
+                <div class="info-card">
+                    <h5>📘 Parte 1</h5>
+                    <p><b>Si sube solo el Packing List:</b></p>
+                    <p>Se generarán:</p>
+                    <ul>
+                        <li><b>Ingreso a SGA</b> (Aduana)</li>
+                        <li><b>Traspaso a P2L</b></li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h5>📗 Parte 2</h5>
+                    <p><b>Si sube Packing List + Maestro:</b></p>
+                    <p>Se generarán los anteriores más:</p>
+                    <ul>
+                        <li><b>Crear Códigos Nuevos</b></li>
+                        <li><b>Ingreso a WMS</b></li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h5>📙 Parte 3</h5>
+                    <p><b>Si sube los 3 archivos:</b></p>
+                    <p>Se generarán todos los anteriores más:</p>
+                    <ul>
+                        <li><b>Ubicación de Códigos Recepcionados</b><br>
+                            <i>(Cruce con el Reporte de Stock)</i></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    {% if resultado and resultado.errores %}
+    <div class="alert alert-error">
+        ⛔ {{ resultado.errores }}
+    </div>
+    {% endif %}
+
+    {# ==================== FORMULARIO ==================== #}
+    <form action="/archivos/carcasas" method="post" enctype="multipart/form-data" class="upload-form">
+        <div class="upload-row-3">
+            <div class="upload-field">
+                <label>1. Packing List (.xlsx / .csv) *</label>
+                <input type="file" name="packing_file" accept=".xlsx,.xls,.csv" required>
+            </div>
+            <div class="upload-field">
+                <label>2. Maestro de Códigos (.xlsx / .csv) [Opcional]</label>
+                <input type="file" name="maestro_file" accept=".xlsx,.xls,.csv">
+            </div>
+            <div class="upload-field">
+                <label>3. Reporte de Stock (.xlsx / .csv) [Opcional]</label>
+                <input type="file" name="stock_file" accept=".xlsx,.xls,.csv">
+            </div>
+        </div>
+        <button type="submit" class="btn-primary">🚀 Procesar y Generar Archivos</button>
+    </form>
+
+    {# ==================== RESULTADOS ==================== #}
+    {% if resultado and not resultado.errores %}
+    <hr class="divider">
+
+    {% if resultado.bloqueo_wms %}
+    <div class="alert alert-error">
+        ⚠️ <b>Proceso parcial:</b> Se generaron los archivos de Ingreso a SGA y Traspaso a P2L,
+        pero <b>NO</b> se generaron los de Creación de Códigos ni Ingreso WMS porque hay
+        <b>Descripción vacía en códigos nuevos</b>. Corrige el Packing List y vuelve a procesar.
+    </div>
+    {% else %}
+    <div class="alert alert-success">✅ ¡Procesamiento completado con éxito!</div>
+    {% endif %}
+
+    <h3>📋 Informe de Generación de Plantillas</h3>
+    <ul class="informe-list">
+        {% for linea in resultado.informe %}
+        <li>{{ linea | safe }}</li>
+        {% endfor %}
+    </ul>
+
+    <hr class="divider">
+
+    <h3>📥 Descargar Archivos</h3>
+
+    <div class="export-form">
+        <p class="hint">
+            El paquete contiene <b>{{ resultado.cantidad_archivos }}</b> archivo(s).
+        </p>
+
+        <a href="/archivos/carcasas/descargar/{{ resultado.token_descarga }}"
+           class="btn-primary">
+            DESCARGAR PAQUETE COMPLETO (.ZIP)
+        </a>
+    </div>
+
+    <details class="info-box" style="margin-top: 1.25rem;">
+        <summary>🔻 Detalle de descargas individuales</summary>
+        <div class="info-content">
+            <div class="downloads-list">
+                {% for nombre in resultado.nombres_archivos %}
+                <a href="/archivos/carcasas/descargar-individual/{{ resultado.token_descarga }}/{{ loop.index0 }}"
+                   class="download-item">
+                    📥 Descargar {{ nombre }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+    {% endif %}
+
+</section>
+{% endblock %}

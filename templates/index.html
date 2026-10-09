@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio — Cargoflex{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+    <h1 class="hero-title">BIENVENIDO AL PORTAL DE OPERACIONES</h1>
+
+    <div class="hero-logo">
+        <img src="/static/img/LogoCargoflex.png" alt="Cargoflex">
+    </div>
+
+    <p class="hero-subtitle">OPERADOR - LOGÍSTICO</p>
+</section>
+
+<hr class="divider">
+
+<section class="dashboard">
+    <h2>📌 Módulos Disponibles</h2>
+
+    <div class="modules-grid">
+
+        <div class="module-card">
+            <h3>📊 Conciliación de Stock</h3>
+            <p><b>Propósito:</b> Auditar y cruzar la información de existencias entre los sistemas SGA y WMS.</p>
+            <p><b>Función:</b> Compara el inventario registrado en SGA contra el de WMS para identificar rápidamente diferencias de stock (faltantes o sobrantes) y asegurar que ambos sistemas mantengan exactamente las mismas cantidades.</p>
+        </div>
+
+        <div class="module-card">
+            <h3>📱 Recepción: Carcasas</h3>
+            <p><b>Propósito:</b> Procesar los archivos de ingreso para la recepción de carcasas.</p>
+            <p><b>Función:</b> Valida la información del Packing List y genera automáticamente los archivos requeridos para registrar el ingreso masivo en los sistemas SGA y WMS.</p>
+        </div>
+
+        <div class="module-card">
+            <h3>📦 Recepción: Otros</h3>
+            <p><b>Propósito:</b> Procesar los archivos de ingreso para la recepción de otros clientes.</p>
+            <p><b>Función:</b> Valida la información del Packing List y genera los archivos necesarios para registrar el ingreso masivo y la creación de nuevos códigos en el sistema WMS.</p>
+        </div>
+
+        <div class="module-card module-card-pending">
+            <h3>🚚 Expedición</h3>
+            <p class="pending-label">⏳ EN PROCESO...</p>
+            <p><b>Propósito:</b> Validar el picking realizado por tienda antes del despacho.</p>
+            <p><b>Función:</b> Permite subir el archivo de picking y verificar, tienda por tienda, que el picking se haya ejecutado correctamente.</p>
+        </div>
+
+        <div class="module-card">
+            <h3>🛒 Picking por Tienda</h3>
+            <p><b>Propósito:</b> Generar picking agrupado por tienda.</p>
+            <p><b>Función:</b> Agrupa los pedidos por tienda para facilitar el proceso de picking en almacén.</p>
+        </div>
+
+    </div>
+</section>
+{% endblock %}

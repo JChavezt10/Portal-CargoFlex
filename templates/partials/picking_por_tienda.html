@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} — Cargoflex{% endblock %}
+
+{% block content %}
+<section class="module-page wide">
+
+    <div class="module-header">
+        <h2>🛒 Picking por Tienda</h2>
+        <p>
+            Sube el archivo de <b>Picking Subcedis</b> para generar un CSV por tienda.
+            Opcionalmente sube el <b>Reporte de Stock</b> (WMS) para validar desabasto.
+        </p>
+        <a href="/" class="btn-back">← Volver al inicio</a>
+    </div>
+
+    {# ==================== INSTRUCCIONES ==================== #}
+    <details class="info-box">
+        <summary>📖 Instrucciones de uso (clic para expandir)</summary>
+        <div class="info-content">
+            <div class="info-columns" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="info-card">
+                    <h5>📘 Parte 1 — Generar archivos</h5>
+                    <p>Solo necesitas el <b>archivo de picking</b>.</p>
+                    <ul>
+                        <li>Se agrupa por tienda y código.</li>
+                        <li>Se genera un CSV por tienda.</li>
+                        <li>Se descarga un ZIP con todos los CSV.</li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <h5>📗 Parte 2 — Validar stock</h5>
+                    <p>Sube también el <b>Reporte de Stock (WMS)</b>.</p>
+                    <ul>
+                        <li>Compara el pedido total vs. stock.</li>
+                        <li>Muestra los códigos con faltante.</li>
+                        <li>Indica si hay stock en <code>C1-REC-1</code>.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    {% if error %}
+    <div class="alert alert-error" style="white-space: pre-line;">⛔ {{ error }}</div>
+    {% endif %}
+
+    {# ==================== FORMULARIO ÚNICO ==================== #}
+    <form action="/picking/procesar" method="post" enctype="multipart/form-data" class="upload-form">
+        <div class="upload-row">
+            <div class="upload-field">
+                <label>1. Archivo de Picking (.xlsx) *</label>
+                <input type="file" name="picking_file" accept=".xlsx,.xls" required>
+            </div>
+            <div class="upload-field">
+                <label>2. Reporte de Stock WMS (.xlsx) [Opcional]</label>
+                <input type="file" name="stock_file" accept=".xlsx,.xls">
+            </div>
+        </div>
+        <button type="submit" class="btn-primary">🚀 Procesar</button>
+    </form>
+
+    {# ==================== RESULTADOS ==================== #}
+    {% if resumen %}
+    <hr class="divider">
+
+    {# ---------- 1. RESUMEN ---------- #}
+    <h3>📋 Resumen de Pedidos por Tienda</h3>
+    <table class="data-table" style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                {% for col in resumen_columnas %}<th>{{ col }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in resumen %}
+            <tr class="{% if fila['Tienda'] == 'TOTAL GENERAL' %}row-ok{% endif %}">
+                {% for col in resumen_columnas %}<td>{{ fila[col] }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# ---------- 2. VALIDACIÓN DE ABASTECIMIENTO ---------- #}
+    <hr class="divider">
+    <h3>🔎 Validación de Abastecimiento de Picking</h3>
+
+    {% if not stock_subido %}
+        <div class="alert alert-error" style="background:#fff8e1;color:#7a5c00;border-left:4px solid #FFA500;">
+            ⏸️ Informe omitido: no se subió el archivo de <b>Reporte de Stock</b>.
+        </div>
+    {% elif hay_desabasto %}
+        <div class="alert alert-error" style="background:#fff8e1;color:#7a5c00;border-left:4px solid #FFA500;">
+            ⚠️ <b>Stock no abastece el Picking.</b>
+            Se encontraron <b>{{ desabasto|length }}</b> código(s) con faltante.
+        </div>
+    {% else %}
+        <div class="alert alert-success">
+            ✅ <b>Stock suficiente para abastecer el Picking.</b>
+        </div>
+    {% endif %}
+
+    {# ---------- 3. DESABASTO ---------- #}
+    {% if stock_subido and hay_desabasto %}
+    <div class="tabs">
+        <input type="radio" name="tab2" id="tab-desabasto" checked>
+        <input type="radio" name="tab2" id="tab-rec">
+        <div class="tab-labels">
+            <label for="tab-desabasto">⚠️ Reporte Desabasto ({{ desabasto|length }})</label>
+            <label for="tab-rec">📦 En Recepción ({{ resumen_rec|length }})</label>
+        </div>
+
+        <div class="tab-content" id="content-desabasto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for col in desabasto_columnas %}<th>{{ col }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in desabasto %}
+                    <tr class="row-error">
+                        {% for col in desabasto_columnas %}
+                        <td>{{ fila[col] }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tab-content" id="content-rec">
+            <p class="hint">
+                Estos códigos están en desabasto pero tienen stock ubicado en
+                <code>C1-REC-1</code>. Ubícalos y podrás picarlos.
+            </p>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for col in resumen_rec_columnas %}<th>{{ col }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in resumen_rec %}
+                    <tr>
+                        {% for col in resumen_rec_columnas %}
+                        <td>{{ fila[col] }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ resumen_rec_columnas|length }}" class="empty">
+                        Ningún código en desabasto está en recepción.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ---------- 4. DESCARGAS ---------- #}
+    <hr class="divider">
+    <h3>📥 DESCARGAS</h3>
+
+    <div class="export-form">
+        <p class="hint">
+            Se generaron <b>{{ cantidad_archivos }}</b> archivo(s)
+            en la carpeta <b>{{ nombre_carpeta }}</b>.
+        </p>
+        <a href="/picking/descargar/{{ token_descarga }}" class="btn-primary">
+            DESCARGAR PAQUETE COMPLETO (.ZIP)
+        </a>
+    </div>
+
+    <details class="info-box" style="margin-top: 1.25rem;">
+        <summary>Descargar archivos individuales ({{ nombres_archivos|length }})</summary>
+        <div class="info-content">
+            <div class="downloads-list">
+                {% for nombre in nombres_archivos %}
+                <a href="/picking/descargar-individual/{{ token_descarga }}/{{ loop.index0 }}"
+                   class="download-item">
+                    📥 {{ nombre }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    {% endif %}
+
+</section>
+{% endblock %}

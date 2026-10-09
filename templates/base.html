@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cargoflex{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/htmx.min.js" defer></script>
+</head>
+<body>
+
+<div class="app-layout">
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="app-sidebar" id="sidebar">
+
+        <div class="sidebar-topbar">
+            <button class="sidebar-collapse-btn"
+                    onclick="document.body.classList.toggle('sidebar-collapsed')"
+                    title="Ocultar menú">
+                «
+            </button>
+        </div>
+
+        <div class="sidebar-header">
+            <img src="/static/img/LogoCargoflex.png" alt="Cargoflex">
+        </div>
+
+        <h3 class="sidebar-title">☰ Menú Principal</h3>
+        <p class="sidebar-version">Cargoflex v1.0.0</p>
+
+        <hr class="sidebar-divider">
+
+        <nav class="sidebar-nav">
+            <a href="/" class="sidebar-link {% if request.url.path == '/' %}active{% endif %}">
+                🏠 Inicio / Panel General
+            </a>
+
+            <a href="/conciliacion/stock" class="sidebar-link {% if 'conciliacion' in request.url.path %}active{% endif %}">
+                📊 Conciliación de Stock
+            </a>
+
+            <details class="sidebar-group" {% if 'archivos' in request.url.path %}open{% endif %}>
+                <summary class="sidebar-link sidebar-group-title">
+                    📥 Procesador de Archivos
+                </summary>
+                <div class="sidebar-submenu">
+                    <a href="/archivos/carcasas" class="sidebar-link sidebar-sublink {% if 'carcasas' in request.url.path %}active{% endif %}">
+                        📱 Archivos Carcasas
+                    </a>
+                    <a href="/archivos/otros" class="sidebar-link sidebar-sublink {% if 'otros' in request.url.path %}active{% endif %}">
+                        📦 Archivos Otros
+                    </a>
+                </div>
+            </details>
+
+            <a href="/picking" class="sidebar-link {% if 'picking' in request.url.path %}active{% endif %}">
+                🛒 Picking por Tienda
+            </a>
+
+            <a href="/expedicion" class="sidebar-link {% if 'expedicion' in request.url.path %}active{% endif %}">
+                🚚 Expedición <span class="badge-pending">En proceso</span>
+            </a>
+        </nav>
+
+        <hr class="sidebar-divider">
+
+        <div class="sidebar-tip">
+            💡 <b>Consejo:</b> Navega entre las opciones o regresa a la pantalla principal en cualquier momento.
+        </div>
+    </aside>
+
+    <button class="sidebar-expand-btn"
+            onclick="document.body.classList.toggle('sidebar-collapsed')"
+            title="Mostrar menú">
+        »
+    </button>
+
+    <!-- ==================== CONTENIDO ==================== -->
+    <div class="app-content">
+        <main class="app-main">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="app-footer">
+            <p>&copy; Cargoflex — Herramientas internas</p>
+        </footer>
+    </div>
+
+</div>
+
+</body>
+</html>

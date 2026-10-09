@@ -1,0 +1,80 @@
+# ================================
+# Entornos virtuales
+# ================================
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ================================
+# Python
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ================================
+# Testing y cobertura
+# ================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ================================
+# Variables de entorno (¡NUNCA subir .env!)
+# ================================
+.env
+.env.local
+.env.*.local
+
+# ================================
+# Editores / IDEs
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ================================
+# Sistema operativo
+# ================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ================================
+# Archivos temporales del proyecto
+# ================================
+*.tmp
+*.log
+temp/
+tmp/
+uploads/
+descargas/
+*.xlsx
+*.xls
+*.csv
+!static/**/*.csv    # (por si algún día quieres versionar un CSV de ejemplo)
+
+# ================================
+# Render / Deploy
+# ================================
+.render/

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} — Cargoflex{% endblock %}
+
+{% block content %}
+<section class="module-page">
+
+    <div class="module-header">
+        <h2>📦 Conciliación de Stock (SGA vs WMS Check)</h2>
+        <p>Sube los archivos de stock descargados de SGA y WMS Check para procesar.</p>
+        <a href="/" class="btn-back">← Volver al inicio</a>
+    </div>
+
+    {% if resultado and resultado.errores %}
+    <div class="alert alert-error">
+        ⛔ {{ resultado.errores }}
+    </div>
+    {% endif %}
+
+    {# ==================== FORMULARIO ==================== #}
+    <form action="/conciliacion/stock" method="post" enctype="multipart/form-data" class="upload-form">
+        <div class="upload-row">
+            <div class="upload-field">
+                <label>Cargar Archivo de SGA (.xlsx)</label>
+                <input type="file" name="sga_file" accept=".xlsx,.xls" required>
+            </div>
+            <div class="upload-field">
+                <label>Cargar Archivo de WMS Check (.xlsx)</label>
+                <input type="file" name="wms_file" accept=".xlsx,.xls" required>
+            </div>
+        </div>
+        <button type="submit" class="btn-primary">🚀 Procesar y Conciliar Stock</button>
+    </form>
+
+    {# ==================== RESULTADOS ==================== #}
+    {% if resultado and not resultado.errores %}
+    <hr class="divider">
+    <div class="alert alert-success">✅ ¡Conciliación completada con éxito!</div>
+
+    {# Métricas #}
+    <div class="metrics-grid">
+        <div class="metric">
+            <span class="metric-label">CANTIDAD DE CÓDIGOS</span>
+            <span class="metric-value">{{ "{:,}".format(resultado.metricas.cant_codigos) }}</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">SUMA TOTAL DE CÓDIGOS</span>
+            {% if resultado.metricas.sum_sga == resultado.metricas.sum_wms %}
+                <span class="metric-value">{{ "{:,}".format(resultado.metricas.sum_wms) }}</span>
+            {% else %}
+                <span class="metric-value">WMS: {{ "{:,}".format(resultado.metricas.sum_wms) }}</span>
+                <span class="metric-value-sub">SGA: {{ "{:,}".format(resultado.metricas.sum_sga) }}</span>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <span class="metric-label">CÓDIGOS CON DIFERENCIA</span>
+            <span class="metric-value">{{ "{:,}".format(resultado.metricas.cant_dif) }}</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">SUMA DE DIFERENCIAS</span>
+            <span class="metric-value">{{ "{:,}".format(resultado.metricas.suma_dif) }}</span>
+        </div>
+    </div>
+
+    <hr class="divider">
+
+    {# Descarga directa #}
+    <h3>📥 Exportar Resultados a Excel</h3>
+    <div class="export-form">
+        <p class="hint">
+            El Excel se generó durante el procesamiento.
+            Incluye las hojas <b>Resultado General</b> y <b>Diferencias con Ubicación</b>.
+        </p>
+        <a href="/conciliacion/stock/descargar/{{ resultado.token_descarga }}"
+           class="btn-primary">
+            DESCARGAR EXCEL
+        </a>
+    </div>
+
+    <hr class="divider">
+
+    {# Tablas #}
+    <div class="tabs">
+        <input type="radio" name="tab" id="tab-dif" checked>
+        <input type="radio" name="tab" id="tab-res">
+        <div class="tab-labels">
+            <label for="tab-dif">⚠️ Diferencias ({{ resultado.diferencias|length }})</label>
+            <label for="tab-res">📊 Resultado General ({{ resultado.resumen|length }})</label>
+        </div>
+
+        <div class="tab-content" id="content-dif">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for col in resultado.diferencias_columnas %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in resultado.diferencias %}
+                    <tr class="{% if fila['ESTADO'] != 'OK' %}row-error{% endif %}">
+                        {% for col in resultado.diferencias_columnas %}
+                        <td>{{ fila[col] }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ resultado.diferencias_columnas|length }}" class="empty">
+                        ¡Excelente! No existen diferencias de stock entre ambos sistemas.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tab-content" id="content-res">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for col in resultado.resumen_columnas %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in resultado.resumen %}
+                    <tr class="{% if fila['ESTADO'] == 'OK' %}row-ok{% else %}row-error{% endif %}">
+                        {% for col in resultado.resumen_columnas %}
+                        <td>{{ fila[col] }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% endif %}
+
+</section>
+{% endblock %}
