@@ -783,3 +783,22 @@ body.sidebar-collapsed .sidebar-expand-btn {
 #content-rec {
     display: none;
 }
+
+/* ============================================
+Tabla compacta (para mostrar más filas)
+   ============================================ */
+.data-table-compact {
+    font-size: 0.75rem;   /* antes era 0.85rem */
+}
+
+.data-table-compact th,
+.data-table-compact td {
+    padding: 0.3rem 0.5rem;   /* antes 0.6rem 0.8rem */
+    line-height: 1.25;
+}
+
+.data-table-compact thead {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}

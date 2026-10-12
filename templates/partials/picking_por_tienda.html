@@ -66,7 +66,7 @@
 
     {# ---------- 1. RESUMEN ---------- #}
     <h3>📋 Resumen de Pedidos por Tienda</h3>
-    <table class="data-table" style="margin-top: 1rem;">
+    <table class="data-table data-table-compact" style="margin-top: 1rem;">
         <thead>
             <tr>
                 {% for col in resumen_columnas %}<th>{{ col }}</th>{% endfor %}
@@ -111,7 +111,7 @@
         </div>
 
         <div class="tab-content" id="content-desabasto">
-            <table class="data-table">
+            <table class="data-table data-table-compact">
                 <thead>
                     <tr>
                         {% for col in desabasto_columnas %}<th>{{ col }}</th>{% endfor %}
@@ -134,7 +134,7 @@
                 Estos códigos están en desabasto pero tienen stock ubicado en
                 <code>C1-REC-1</code>. Ubícalos y podrás picarlos.
             </p>
-            <table class="data-table">
+            <table class="data-table data-table-compact">
                 <thead>
                     <tr>
                         {% for col in resumen_rec_columnas %}<th>{{ col }}</th>{% endfor %}

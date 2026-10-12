@@ -31,8 +31,8 @@ UBICACION_REC = "C1-REC-1"
 def leer_picking(picking_bytes: bytes, picking_nombre: str) -> pd.DataFrame:
     """
     Lee el archivo de picking y devuelve un DataFrame con columnas:
-      codigo_departamento, nombre_departamento, codigo_color,
-      unidades_solicitadas, codigo_sin_punto
+    codigo_departamento, nombre_departamento, codigo_color,
+    unidades_solicitadas, codigo_sin_punto
 
     Valida que las columnas críticas (C, D, E, F) no tengan vacíos.
     Lanza ValueError con un mensaje legible si encuentra problemas.
@@ -154,12 +154,18 @@ def resumen_por_tienda(df: pd.DataFrame) -> pd.DataFrame:
 
     resumen.insert(0, "N°", range(1, len(resumen) + 1))
 
+    # --- TOTAL GENERAL ---
+    # Cant. Códigos: códigos distintos en TODO el picking
+    total_codigos = df["codigo_sin_punto"].nunique()
+    # Suma Cantidades: sí se puede sumar (las unidades sí se acumulan)
+    total_cantidades = int(resumen["Suma Cantidades"].sum())
+
     total_row = {
         "N°": "",
         "Tienda": "TOTAL GENERAL",
         "Nombre": "",
-        "Cant. Códigos": int(resumen["Cant. Códigos"].sum()),
-        "Suma Cantidades": int(resumen["Suma Cantidades"].sum()),
+        "Cant. Códigos": int(total_codigos),
+        "Suma Cantidades": total_cantidades,
     }
     resumen = pd.concat([resumen, pd.DataFrame([total_row])], ignore_index=True)
 
@@ -170,16 +176,24 @@ def resumen_por_tienda(df: pd.DataFrame) -> pd.DataFrame:
 # PARTE 1: GENERACIÓN DE ARCHIVOS POR TIENDA
 # =========================================================
 def generar_archivos_por_tienda(
-    df: pd.DataFrame, fecha: datetime | None = None
+    df: pd.DataFrame,
+    picking_nombre: str,
+    fecha: datetime | None = None,
 ) -> tuple[dict[str, bytes], str]:
     """
     Devuelve (archivos_dict, nombre_carpeta).
-    archivos_dict: { "4212 REAL PLAZA PIURA.csv": bytes, ... }
+
+    El nombre de la carpeta incluye la semana si el archivo de pedido la tiene,
+    por ejemplo: "PickingCarcasas w40 11102026" o "PickingCarcasas 11102026".
     """
     if fecha is None:
         fecha = datetime.now()
-    fecha_str = fecha.strftime("%Y%m%d")       # 20261009
-    fecha_ddmmyyyy = fecha.strftime("%d%m%Y")  # 09102026
+    fecha_str = fecha.strftime("%Y%m%d")
+    fecha_ddmmyyyy = fecha.strftime("%d%m%Y")
+
+    # --- Detectar semana (W40, W41, ...) en el nombre del archivo ---
+    semana_match = re.search(r"\b(W\d{1,2})\b", picking_nombre, re.IGNORECASE)
+    semana = semana_match.group(1).lower() if semana_match else None
 
     agrupado = (
         df.groupby(
@@ -189,14 +203,14 @@ def generar_archivos_por_tienda(
     )
 
     tiene_mat = agrupado["codigo_sin_punto"].str.startswith("MAT").any()
-    nombre_carpeta = (
-        f"PickingMateriales {fecha_ddmmyyyy}"
-        if tiene_mat
-        else f"PickingCarcasas {fecha_ddmmyyyy}"
-    )
+    prefijo = "PickingMateriales" if tiene_mat else "PickingCarcasas"
+
+    if semana:
+        nombre_carpeta = f"{prefijo} {semana} {fecha_ddmmyyyy}"
+    else:
+        nombre_carpeta = f"{prefijo} {fecha_ddmmyyyy}"
 
     archivos: dict[str, bytes] = {}
-
     for (tienda, nombre), grupo in agrupado.groupby(
         ["codigo_departamento", "nombre_departamento"]
     ):

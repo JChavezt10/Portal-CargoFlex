@@ -109,7 +109,9 @@ async def picking_procesar(
         # ---- PARTE 1: SIEMPRE ----
         df = service.leer_picking(picking_bytes, picking_file.filename)
         resumen_df = service.resumen_por_tienda(df)
-        archivos, nombre_carpeta = service.generar_archivos_por_tienda(df)
+        archivos, nombre_carpeta = service.generar_archivos_por_tienda(
+            df, picking_file.filename
+        )
         token = _guardar_zip_en_cache(archivos, f"{nombre_carpeta}.zip")
 
         contexto.update(
