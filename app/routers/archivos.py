@@ -193,7 +193,12 @@ async def carcasas_descargar(token: str):
     if not entrada:
         raise HTTPException(
             status_code=404,
-            detail="El archivo expiró o no existe. Vuelve a procesar.",
+            detail=(
+                "El paquete de archivos expiró o ya no está disponible. "
+                "Por seguridad, los archivos generados se eliminan después "
+                "de 30 minutos de inactividad. Vuelve al formulario y procesa "
+                "nuevamente los datos."
+            ),
         )
 
     return StreamingResponse(
@@ -216,7 +221,12 @@ async def carcasas_descargar_individual(token: str, index: int):
     if not entrada:
         raise HTTPException(
             status_code=404,
-            detail="El paquete expiró o no existe. Vuelve a procesar.",
+            detail=(
+                "El paquete de archivos expiró o ya no está disponible. "
+                "Por seguridad, los archivos generados se eliminan después "
+                "de 15 minutos de inactividad. Vuelve al formulario y procesa "
+                "nuevamente los datos."
+            ),
         )
 
     # Reconstruimos el dict de archivos desde el ZIP guardado

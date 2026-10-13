@@ -48,7 +48,7 @@ def _guardar_zip_en_cache(archivos: dict[str, bytes], nombre: str) -> str:
         "bytes": zip_buffer.getvalue(),
         "nombre": nombre,
         "expira": datetime.now() + timedelta(minutes=_TTL_MINUTOS),
-        "nombres": list(archivos.keys()),  # ← orden preservado para descarga individual
+        "nombres": list(archivos.keys()),
     }
     return token
 
@@ -64,11 +64,16 @@ async def picking_formulario(request: Request):
             "request": request,
             "titulo": "Picking por Tienda",
             "resumen": None,
+            "resumen_columnas": None,
             "desabasto": None,
+            "desabasto_columnas": None,
             "resumen_rec": None,
+            "resumen_rec_columnas": None,
+            "sospechosos": None,
             "nombre_carpeta": None,
             "token_descarga": None,
             "nombres_archivos": None,
+            "cantidad_archivos": None,
             "stock_subido": False,
             "hay_desabasto": False,
             "error": None,
@@ -94,6 +99,7 @@ async def picking_procesar(
         "desabasto_columnas": None,
         "resumen_rec": None,
         "resumen_rec_columnas": None,
+        "sospechosos": None,
         "nombre_carpeta": None,
         "token_descarga": None,
         "nombres_archivos": None,
@@ -134,12 +140,19 @@ async def picking_procesar(
             desabasto_df, resumen_rec_df = service.comparar_stock(
                 df, stock_disp, stock_rec, desc
             )
+
+            # Detección de códigos sospechosos
+            sospechosos = service.detectar_sospechosos(
+                df, stock_disp, stock_rec
+            )
+
             contexto.update(
                 {
                     "desabasto": desabasto_df.to_dict(orient="records"),
                     "desabasto_columnas": list(desabasto_df.columns),
                     "resumen_rec": resumen_rec_df.to_dict(orient="records"),
                     "resumen_rec_columnas": list(resumen_rec_df.columns),
+                    "sospechosos": sospechosos,
                     "stock_subido": True,
                     "hay_desabasto": len(desabasto_df) > 0,
                 }
@@ -166,7 +179,12 @@ async def picking_descargar(token: str):
     if not entrada:
         raise HTTPException(
             status_code=404,
-            detail="El paquete expiró o no existe. Vuelve a procesar.",
+            detail=(
+                "El paquete de archivos expiró o ya no está disponible. "
+                "Por seguridad, los archivos generados se eliminan después "
+                "de 30 minutos de inactividad. Vuelve al formulario y procesa "
+                "nuevamente los datos."
+            ),
         )
     return StreamingResponse(
         io.BytesIO(entrada["bytes"]),
@@ -187,7 +205,12 @@ async def picking_descargar_individual(token: str, index: int):
     if not entrada:
         raise HTTPException(
             status_code=404,
-            detail="El paquete expiró o no existe. Vuelve a procesar.",
+            detail=(
+                "El paquete de archivos expiró o ya no está disponible. "
+                "Por seguridad, los archivos generados se eliminan después "
+                "de 30 minutos de inactividad. Vuelve al formulario y procesa "
+                "nuevamente los datos."
+            ),
         )
 
     zip_buffer = io.BytesIO(entrada["bytes"])
@@ -198,7 +221,6 @@ async def picking_descargar_individual(token: str, index: int):
         nombre_archivo = nombres[index]
         contenido = zf.read(nombre_archivo)
 
-    # Detectar media type
     if nombre_archivo.lower().endswith(".xlsx"):
         media_type = (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

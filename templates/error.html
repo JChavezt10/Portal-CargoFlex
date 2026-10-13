@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} — Cargoflex{% endblock %}
+
+{% block content %}
+<section class="module-page" style="text-align: center; padding: 4rem 2rem; max-width: 700px; margin: 0 auto;">
+
+    <div style="font-size: 5rem; margin-bottom: 1rem; line-height: 1;">
+        {{ icono | default("⚠️") }}
+    </div>
+
+    <h2 style="color: #2C2E35; margin-bottom: 1rem;">
+        {{ titulo }}
+    </h2>
+
+    <div style="
+        display: inline-block;
+        background: #fff8e1;
+        color: #7a5c00;
+        border-left: 5px solid #FFA500;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        margin: 1rem 0;
+        text-align: left;
+        max-width: 100%;
+        line-height: 1.5;
+    ">
+        {{ mensaje }}
+    </div>
+
+    {% if detalle %}
+    <details class="info-box" style="margin-top: 1rem; text-align: left;">
+        <summary>🔎 Ver detalle técnico</summary>
+        <div class="info-content">
+            <pre style="
+                background: #f8f9fa;
+                padding: 1rem;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                overflow-x: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+                color: #2f3640;
+            ">{{ detalle }}</pre>
+        </div>
+    </details>
+    {% endif %}
+
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap;">
+        <a href="/" class="btn-primary">🏠 Volver al inicio</a>
+        <a href="javascript:history.back()" class="btn-secondary">
+            ← Regresar
+        </a>
+    </div>
+
+    <p style="color: #718093; margin-top: 2rem; font-size: 0.85rem;">
+        Si el problema persiste, contacta al área de sistemas.
+    </p>
+
+</section>
+{% endblock %}

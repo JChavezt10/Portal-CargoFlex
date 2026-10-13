@@ -11,6 +11,7 @@ import re
 from datetime import datetime
 
 import pandas as pd
+from openpyxl import load_workbook
 
 from app.utils.file_helpers import leer_archivo_a_dataframe
 
@@ -26,16 +27,100 @@ UBICACION_REC = "C1-REC-1"
 
 
 # =========================================================
+# HELPERS DE FORMATO / TEXTO
+# =========================================================
+def completar_color_a_3_digitos(codigo_sin_punto: str) -> str:
+    """
+    Si el código termina en 1-2 dígitos numéricos, los rellena con ceros
+    a la derecha hasta llegar a 3 dígitos.
+
+    No toca códigos que empiecen con MAT (materiales).
+    No toca códigos cuyo sufijo numérico ya tenga 3 o más dígitos.
+    No toca códigos que no terminen en dígito.
+    """
+    if codigo_sin_punto.upper().startswith("MAT"):
+        return codigo_sin_punto
+
+    i = len(codigo_sin_punto)
+    while i > 0 and codigo_sin_punto[i - 1].isdigit():
+        i -= 1
+
+    base = codigo_sin_punto[:i]
+    sufijo = codigo_sin_punto[i:]
+
+    if not sufijo:
+        return codigo_sin_punto
+    if len(sufijo) >= 3:
+        return codigo_sin_punto
+
+    return base + sufijo.ljust(3, "0")
+
+
+def _celda_a_texto(valor, formato) -> str:
+    """
+    Convierte el valor de una celda de openpyxl a texto respetando
+    su formato numérico.
+    """
+    if valor is None:
+        return ""
+    if isinstance(valor, str):
+        return valor.strip()
+    if isinstance(valor, bool):
+        return str(valor)
+
+    if isinstance(valor, (int, float)):
+        fmt = (formato or "General").strip()
+
+        # General o Texto: usar representación por defecto
+        if fmt in ("General", "@"):
+            if isinstance(valor, float) and valor.is_integer():
+                return str(int(valor))
+            return str(valor)
+
+        # Extraer decimales del formato, ej: "0.000" → 3
+        m = re.search(r"\.([0#]+)", fmt)
+        if m:
+            decimales = len(m.group(1))
+            return f"{valor:.{decimales}f}"
+
+        # Formato entero
+        if isinstance(valor, float) and valor.is_integer():
+            return str(int(valor))
+        return str(valor)
+
+    return str(valor)
+
+
+def leer_columna_E_con_formato(
+    contenido: bytes,
+    nombre_hoja: str,
+    fila_inicio: int = 2,
+) -> list[str]:
+    """
+    Lee la columna E (índice 5) del Excel preservando el formato
+    de cada celda. Devuelve una lista de strings tal como se verían
+    en Excel.
+    """
+    wb = load_workbook(io.BytesIO(contenido), data_only=True)
+    if nombre_hoja not in wb.sheetnames:
+        return []
+    ws = wb[nombre_hoja]
+
+    valores = []
+    for row in ws.iter_rows(min_row=fila_inicio, min_col=5, max_col=5):
+        cell = row[0]
+        valores.append(_celda_a_texto(cell.value, cell.number_format))
+    return valores
+
+
+# =========================================================
 # PARTE 1: LECTURA Y VALIDACIÓN DEL PICKING
 # =========================================================
 def leer_picking(picking_bytes: bytes, picking_nombre: str) -> pd.DataFrame:
     """
     Lee el archivo de picking y devuelve un DataFrame con columnas:
-    codigo_departamento, nombre_departamento, codigo_color,
-    unidades_solicitadas, codigo_sin_punto
-
-    Valida que las columnas críticas (C, D, E, F) no tengan vacíos.
-    Lanza ValueError con un mensaje legible si encuentra problemas.
+    codigo_departamento, nombre_departamento, codigo_excel,
+    codigo_leido, codigo_sin_punto, unidades_solicitadas
     """
     # --- Localizar hoja ---
     xls = pd.ExcelFile(io.BytesIO(picking_bytes))
@@ -49,7 +134,7 @@ def leer_picking(picking_bytes: bytes, picking_nombre: str) -> pd.DataFrame:
             f"No se encontró una hoja que comience con '{HOJA_PICKING_PREFIJO}'"
         )
 
-    # --- Leer columnas C, D, E, F ---
+    # --- Leer columnas C, D, E, F con pandas ---
     df = pd.read_excel(io.BytesIO(picking_bytes), sheet_name=hoja)
     df = df.iloc[:, [2, 3, 4, 5]]
     df.columns = [
@@ -59,9 +144,17 @@ def leer_picking(picking_bytes: bytes, picking_nombre: str) -> pd.DataFrame:
         "unidades_solicitadas",
     ]
 
-    # --- Descartar filas 100% vacías (típicas al final del Excel) ---
-    df = df.dropna(how="all").reset_index(drop=True)
+    # --- Sobrescribir columna E respetando formato de Excel ---
+    valores_E = leer_columna_E_con_formato(picking_bytes, hoja)
+    n = len(df)
+    if len(valores_E) > n:
+        valores_E = valores_E[:n]
+    elif len(valores_E) < n:
+        valores_E += [""] * (n - len(valores_E))
+    df["codigo_color"] = valores_E
 
+    # --- Descartar filas 100% vacías ---
+    df = df.dropna(how="all").reset_index(drop=True)
     if df.empty:
         raise ValueError("El archivo no contiene filas con datos.")
 
@@ -128,9 +221,18 @@ def leer_picking(picking_bytes: bytes, picking_nombre: str) -> pd.DataFrame:
         )
         raise ValueError(mensaje)
 
-    # --- Normalización final (ya validado) ---
+    # --- Normalización final ---
     df["codigo_departamento"] = c_tienda.str.replace(r"\.0$", "", regex=True)
-    df["codigo_sin_punto"] = c_color.str.replace(".", "", regex=False)
+
+    # codigo_excel: valor tal cual de la celda, como se ve en Excel
+    df["codigo_excel"] = c_color
+
+    # codigo_leido: sin punto, sin completar
+    df["codigo_leido"] = c_color.str.replace(".", "", regex=False)
+
+    # codigo_sin_punto: leído + completado a 3 dígitos si aplica
+    df["codigo_sin_punto"] = df["codigo_leido"].apply(completar_color_a_3_digitos)
+
     df["unidades_solicitadas"] = c_cant_num.astype(int)
 
     return df
@@ -154,10 +256,7 @@ def resumen_por_tienda(df: pd.DataFrame) -> pd.DataFrame:
 
     resumen.insert(0, "N°", range(1, len(resumen) + 1))
 
-    # --- TOTAL GENERAL ---
-    # Cant. Códigos: códigos distintos en TODO el picking
     total_codigos = df["codigo_sin_punto"].nunique()
-    # Suma Cantidades: sí se puede sumar (las unidades sí se acumulan)
     total_cantidades = int(resumen["Suma Cantidades"].sum())
 
     total_row = {
@@ -182,16 +281,12 @@ def generar_archivos_por_tienda(
 ) -> tuple[dict[str, bytes], str]:
     """
     Devuelve (archivos_dict, nombre_carpeta).
-
-    El nombre de la carpeta incluye la semana si el archivo de pedido la tiene,
-    por ejemplo: "PickingCarcasas w40 11102026" o "PickingCarcasas 11102026".
     """
     if fecha is None:
         fecha = datetime.now()
     fecha_str = fecha.strftime("%Y%m%d")
     fecha_ddmmyyyy = fecha.strftime("%d%m%Y")
 
-    # --- Detectar semana (W40, W41, ...) en el nombre del archivo ---
     semana_match = re.search(r"\b(W\d{1,2})\b", picking_nombre, re.IGNORECASE)
     semana = semana_match.group(1).lower() if semana_match else None
 
@@ -245,9 +340,6 @@ def generar_archivos_por_tienda(
 def leer_stock(stock_bytes: bytes, stock_nombre: str):
     """
     Devuelve (stock_disponible_df, stock_rec_df, descripciones_df).
-    - stock_disponible: excluye C1-DSP-1 y C1-REC-1
-    - stock_rec:        solo C1-REC-1 (cantidad total por código)
-    - descripciones:    primera descripción por código
     """
     df = leer_archivo_a_dataframe(stock_bytes, stock_nombre, dtype=str)
     df.columns = df.columns.str.strip()
@@ -261,7 +353,6 @@ def leer_stock(stock_bytes: bytes, stock_nombre: str):
     df["stock_fisico"] = pd.to_numeric(df["stock_fisico"], errors="coerce").fillna(0)
     df["ubicacion"] = df["ubicacion"].astype(str).str.strip()
 
-    # Stock disponible (excluye C1-DSP-1 y C1-REC-1)
     df_disp = df[~df["ubicacion"].isin(UBICACIONES_EXCLUIDAS)]
     stock_disponible = (
         df_disp.groupby("codigo")["stock_fisico"]
@@ -270,7 +361,6 @@ def leer_stock(stock_bytes: bytes, stock_nombre: str):
         .rename(columns={"stock_fisico": "stock_disponible"})
     )
 
-    # Stock en recepción
     df_rec = df[df["ubicacion"] == UBICACION_REC]
     stock_rec = (
         df_rec.groupby("codigo")["stock_fisico"]
@@ -279,7 +369,6 @@ def leer_stock(stock_bytes: bytes, stock_nombre: str):
         .rename(columns={"stock_fisico": "stock_rec"})
     )
 
-    # Descripción
     desc = df.groupby("codigo")["descripcion"].first().reset_index()
 
     return stock_disponible, stock_rec, desc
@@ -287,12 +376,7 @@ def leer_stock(stock_bytes: bytes, stock_nombre: str):
 
 def comparar_stock(df_picking, stock_disponible, stock_rec, desc):
     """
-    Compara el pedido total (por código, sin importar tienda) contra el stock.
     Devuelve (desabasto_df, resumen_rec_df).
-
-    desabasto_df:   N°, CÓDIGO, DESCRIPCIÓN, CANT PEDIDO, CANT STOCK, DIF(STOCK-PEDIDO)
-    resumen_rec_df: N°, CÓDIGO, DESCRIPCIÓN, Ubicado, CANT REC
-                    (solo códigos en desabasto que tienen stock en C1-REC-1)
     """
     pedido = (
         df_picking.groupby("codigo_sin_punto")["unidades_solicitadas"]
@@ -316,7 +400,7 @@ def comparar_stock(df_picking, stock_disponible, stock_rec, desc):
     merged["stock_rec"] = merged["stock_rec"].fillna(0).astype(int)
     merged["dif"] = merged["stock_disponible"] - merged["cant_pedido"]
 
-    # --- Desabasto (sin columna Ubicado REC) ---
+    # --- Desabasto ---
     desabasto = merged[merged["dif"] < 0].copy()
     desabasto = desabasto.sort_values("dif").reset_index(drop=True)
     desabasto.insert(0, "N°", range(1, len(desabasto) + 1))
@@ -339,7 +423,7 @@ def comparar_stock(df_picking, stock_disponible, stock_rec, desc):
         "DIF(STOCK-PEDIDO)",
     ]
 
-    # --- Resumen Recepción: SOLO códigos en desabasto que tienen stock en REC ---
+    # --- Resumen Recepción ---
     resumen_rec = merged[(merged["dif"] < 0) & (merged["stock_rec"] > 0)].copy()
     resumen_rec = resumen_rec.sort_values("codigo").reset_index(drop=True)
     resumen_rec.insert(0, "N°", range(1, len(resumen_rec) + 1))
@@ -356,3 +440,51 @@ def comparar_stock(df_picking, stock_disponible, stock_rec, desc):
     ]
 
     return desabasto, resumen_rec
+
+
+# =========================================================
+# PARTE 3: DETECCIÓN DE CÓDIGOS SOSPECHOSOS
+# =========================================================
+def detectar_sospechosos(
+    df_picking: pd.DataFrame,
+    stock_disponible: pd.DataFrame,
+    stock_rec: pd.DataFrame,
+) -> list[dict]:
+    """
+    Códigos que aparecen en el picking pero NO existen ni en stock
+    ni en recepción. Se muestran para que el usuario verifique si el
+    código del Excel está bien.
+    """
+    codigos_picking = set(df_picking["codigo_sin_punto"].unique())
+    codigos_stock = set(stock_disponible["codigo"]).union(set(stock_rec["codigo"]))
+    codigos_rec = set(stock_rec["codigo"])
+
+    codigos_sospechosos = (codigos_picking - codigos_stock) - codigos_rec
+
+    sospechosos = []
+    for codigo in codigos_sospechosos:
+        filas_df = df_picking[df_picking["codigo_sin_punto"] == codigo]
+        for tienda in sorted(filas_df["codigo_departamento"].unique()):
+            filas_tienda = filas_df[filas_df["codigo_departamento"] == tienda]
+
+            codigo_excel = filas_tienda["codigo_excel"].iloc[0]
+            codigo_final = codigo  # ya completado
+
+            filas_excel = sorted((filas_tienda.index + 2).tolist())
+            pedido = int(filas_tienda["unidades_solicitadas"].sum())
+
+            sospechosos.append({
+                "codigo_excel": codigo_excel,
+                "codigo_final": codigo_final,
+                "tienda": tienda,
+                "fila_excel": ", ".join(map(str, filas_excel)),
+                "pedido": pedido,
+            })
+
+    # Ordenar por tienda, luego por código final
+    sospechosos.sort(key=lambda s: (str(s["tienda"]), str(s["codigo_final"])))
+
+    for i, s in enumerate(sospechosos, start=1):
+        s["n"] = i
+
+    return sospechosos

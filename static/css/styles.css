@@ -802,3 +802,39 @@ Tabla compacta (para mostrar más filas)
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
+
+/* ============================================
+Tabs genéricos para Picking
+   ============================================ */
+#tab-desabasto:checked ~ #content-desabasto,
+#tab-rec:checked ~ #content-rec,
+#tab-sosp:checked ~ #content-sosp {
+    display: block;
+}
+
+#content-desabasto,
+#content-rec,
+#content-sosp {
+    display: none;
+}
+
+/* ============================================
+Botón secundario (para páginas de error)
+   ============================================ */
+.btn-secondary {
+    background: #4a6d8c;
+    color: #fff;
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: background 0.15s;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: #ED1C24;
+}

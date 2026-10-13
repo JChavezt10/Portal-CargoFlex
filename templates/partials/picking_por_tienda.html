@@ -94,22 +94,34 @@
             ⚠️ <b>Stock no abastece el Picking.</b>
             Se encontraron <b>{{ desabasto|length }}</b> código(s) con faltante.
         </div>
+
+        {% if sospechosos %}
+        <div class="alert alert-error" style="background:#fde8e8;color:#9c0006;border-left:4px solid #ED1C24;">
+            🔍 Se detectaron <b>{{ sospechosos|length }}</b> código(s) que no existen en el WMS.<br>
+            Revisa la pestaña <b>"Códigos Sospechosos"</b> para verificar si el código
+            del Excel está correcto antes de continuar. Si está mal,
+            <b>formatea a texto la columna de códigos en Excel y vuelve a procesar</b>.
+        </div>
+        {% endif %}
     {% else %}
         <div class="alert alert-success">
             ✅ <b>Stock suficiente para abastecer el Picking.</b>
         </div>
     {% endif %}
 
-    {# ---------- 3. DESABASTO ---------- #}
+    {# ---------- 3. TABS ---------- #}
     {% if stock_subido and hay_desabasto %}
     <div class="tabs">
         <input type="radio" name="tab2" id="tab-desabasto" checked>
         <input type="radio" name="tab2" id="tab-rec">
+        <input type="radio" name="tab2" id="tab-sosp">
         <div class="tab-labels">
             <label for="tab-desabasto">⚠️ Reporte Desabasto ({{ desabasto|length }})</label>
             <label for="tab-rec">📦 En Recepción ({{ resumen_rec|length }})</label>
+            <label for="tab-sosp">🔍 Códigos Sospechosos ({{ sospechosos|length }})</label>
         </div>
 
+        {# --- TAB: DESABASTO --- #}
         <div class="tab-content" id="content-desabasto">
             <table class="data-table data-table-compact">
                 <thead>
@@ -129,6 +141,7 @@
             </table>
         </div>
 
+        {# --- TAB: RECEPCIÓN --- #}
         <div class="tab-content" id="content-rec">
             <p class="hint">
                 Estos códigos están en desabasto pero tienen stock ubicado en
@@ -150,6 +163,45 @@
                     {% else %}
                     <tr><td colspan="{{ resumen_rec_columnas|length }}" class="empty">
                         Ningún código en desabasto está en recepción.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# --- TAB: SOSPECHOSOS --- #}
+        <div class="tab-content" id="content-sosp">
+            <p class="hint">
+                Códigos que <b>no están en stock ni en recepción</b>.
+                Compara el <b>Código en Excel</b> con el <b>Código final</b>.
+                Si el código final tiene ceros agregados, revisa en tu Excel original
+                si el código estaba bien escrito. Si está mal,
+                <b>formatea a texto la columna de códigos en Excel y vuelve a procesar</b>.
+            </p>
+            <table class="data-table data-table-compact">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Código en Excel</th>
+                        <th>Código final</th>
+                        <th>Tienda</th>
+                        <th>Fila Excel</th>
+                        <th>Pedido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in sospechosos %}
+                    <tr class="row-error">
+                        <td>{{ s.n }}</td>
+                        <td>{{ s.codigo_excel }}</td>
+                        <td>{{ s.codigo_final }}</td>
+                        <td>{{ s.tienda }}</td>
+                        <td>{{ s.fila_excel }}</td>
+                        <td>{{ s.pedido }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="empty">
+                        No hay códigos sospechosos.
                     </td></tr>
                     {% endfor %}
                 </tbody>
