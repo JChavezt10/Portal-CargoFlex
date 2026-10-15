@@ -18,6 +18,26 @@
     <details class="info-box">
         <summary>📖 Instrucciones de uso (clic para expandir)</summary>
         <div class="info-content">
+            
+            {# --- NUEVA TARJETA DE INSTRUCCIONES (OCUPA TODO EL ANCHO) --- #}
+            <div class="alert alert-error" style="background:#fff8e1;color:#7a5c00;border-left:4px solid #FFA500; margin-bottom: 1rem; width: 100%;">
+                📌 <b>PASOS OBLIGATORIOS ANTES DE SUBIR EL ARCHIVO:</b>
+                <br><br>
+                <b>1. Nombre de la Hoja:</b> La hoja del Excel debe comenzar con la palabra <b>"Picking"</b>. 
+                Ejemplo: <code>Picking W41</code> o <code>Picking W41 Materilaes</code>. 
+                <br><br>
+                <b>2. Agregar Columna F (Código WMS):</b> Debes insertar una nueva columna F al costado de tu código original (Columna E). 
+                En esta columna F, escribe el código <b>transformado</b>: 
+                <b>elimina el punto (.)</b> del código original.
+                <br>
+                <i>Ejemplo:</i> Si en la Columna E tienes <code>456123.056</code>, en la Columna F debe ser <code>456123056</code>
+                <br><br>
+                <b>3. Columna G (Cantidad):</b> Asegúrate de que la cantidad solicitada quede en la Columna G.
+                <br><br>
+                Si alguna de estas validaciones falla, el sistema rechazará el archivo y te indicará la fila exacta del error.
+            </div>
+
+            {# --- TARJETAS EXISTENTES (PARTE 1 Y PARTE 2) --- #}
             <div class="info-columns" style="grid-template-columns: repeat(2, 1fr);">
                 <div class="info-card">
                     <h5>📘 Parte 1 — Generar archivos</h5>
@@ -94,15 +114,6 @@
             ⚠️ <b>Stock no abastece el Picking.</b>
             Se encontraron <b>{{ desabasto|length }}</b> código(s) con faltante.
         </div>
-
-        {% if sospechosos %}
-        <div class="alert alert-error" style="background:#fde8e8;color:#9c0006;border-left:4px solid #ED1C24;">
-            🔍 Se detectaron <b>{{ sospechosos|length }}</b> código(s) que no existen en el WMS.<br>
-            Revisa la pestaña <b>"Códigos Sospechosos"</b> para verificar si el código
-            del Excel está correcto antes de continuar. Si está mal,
-            <b>formatea a texto la columna de códigos en Excel y vuelve a procesar</b>.
-        </div>
-        {% endif %}
     {% else %}
         <div class="alert alert-success">
             ✅ <b>Stock suficiente para abastecer el Picking.</b>
@@ -114,11 +125,9 @@
     <div class="tabs">
         <input type="radio" name="tab2" id="tab-desabasto" checked>
         <input type="radio" name="tab2" id="tab-rec">
-        <input type="radio" name="tab2" id="tab-sosp">
         <div class="tab-labels">
             <label for="tab-desabasto">⚠️ Reporte Desabasto ({{ desabasto|length }})</label>
             <label for="tab-rec">📦 En Recepción ({{ resumen_rec|length }})</label>
-            <label for="tab-sosp">🔍 Códigos Sospechosos ({{ sospechosos|length }})</label>
         </div>
 
         {# --- TAB: DESABASTO --- #}
@@ -168,45 +177,6 @@
                 </tbody>
             </table>
         </div>
-
-        {# --- TAB: SOSPECHOSOS --- #}
-        <div class="tab-content" id="content-sosp">
-            <p class="hint">
-                Códigos que <b>no están en stock ni en recepción</b>.
-                Compara el <b>Código en Excel</b> con el <b>Código final</b>.
-                Si el código final tiene ceros agregados, revisa en tu Excel original
-                si el código estaba bien escrito. Si está mal,
-                <b>formatea a texto la columna de códigos en Excel y vuelve a procesar</b>.
-            </p>
-            <table class="data-table data-table-compact">
-                <thead>
-                    <tr>
-                        <th>N°</th>
-                        <th>Código en Excel</th>
-                        <th>Código final</th>
-                        <th>Tienda</th>
-                        <th>Fila Excel</th>
-                        <th>Pedido</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in sospechosos %}
-                    <tr class="row-error">
-                        <td>{{ s.n }}</td>
-                        <td>{{ s.codigo_excel }}</td>
-                        <td>{{ s.codigo_final }}</td>
-                        <td>{{ s.tienda }}</td>
-                        <td>{{ s.fila_excel }}</td>
-                        <td>{{ s.pedido }}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" class="empty">
-                        No hay códigos sospechosos.
-                    </td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
     </div>
     {% endif %}
 
@@ -230,7 +200,7 @@
             <div class="downloads-list">
                 {% for nombre in nombres_archivos %}
                 <a href="/picking/descargar-individual/{{ token_descarga }}/{{ loop.index0 }}"
-                   class="download-item">
+                    class="download-item">
                     📥 {{ nombre }}
                 </a>
                 {% endfor %}

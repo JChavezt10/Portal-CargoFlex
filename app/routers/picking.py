@@ -69,7 +69,6 @@ async def picking_formulario(request: Request):
             "desabasto_columnas": None,
             "resumen_rec": None,
             "resumen_rec_columnas": None,
-            "sospechosos": None,
             "nombre_carpeta": None,
             "token_descarga": None,
             "nombres_archivos": None,
@@ -99,7 +98,6 @@ async def picking_procesar(
         "desabasto_columnas": None,
         "resumen_rec": None,
         "resumen_rec_columnas": None,
-        "sospechosos": None,
         "nombre_carpeta": None,
         "token_descarga": None,
         "nombres_archivos": None,
@@ -141,18 +139,12 @@ async def picking_procesar(
                 df, stock_disp, stock_rec, desc
             )
 
-            # Detección de códigos sospechosos
-            sospechosos = service.detectar_sospechosos(
-                df, stock_disp, stock_rec
-            )
-
             contexto.update(
                 {
                     "desabasto": desabasto_df.to_dict(orient="records"),
                     "desabasto_columnas": list(desabasto_df.columns),
                     "resumen_rec": resumen_rec_df.to_dict(orient="records"),
                     "resumen_rec_columnas": list(resumen_rec_df.columns),
-                    "sospechosos": sospechosos,
                     "stock_subido": True,
                     "hay_desabasto": len(desabasto_df) > 0,
                 }
